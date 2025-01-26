@@ -12,48 +12,62 @@ metadata = MetaData(
 
 db = SQLAlchemy(metadata=metadata)
 
-
 class Restaurant(db.Model, SerializerMixin):
-    __tablename__ = "restaurants"
+    __tablename__ = "restaurants"  # Corrected __tablename__
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String)
     address = db.Column(db.String)
 
     # add relationship
+    restaurant_pizzas = db.relationship('RestaurantPizza', back_populates='restaurant', cascade='all, delete-orphan')
 
     # add serialization rules
+    serialize_only = ('id', 'name', 'address', 'restaurant_pizzas')
+    serialize_rules = ('-restaurant_pizzas.restaurant',)  # exclude recursive relationships
 
-    def __repr__(self):
+    def __repr__(self):  # Corrected __repr__
         return f"<Restaurant {self.name}>"
 
-
 class Pizza(db.Model, SerializerMixin):
-    __tablename__ = "pizzas"
+    __tablename__ = "pizzas"  # Corrected __tablename__
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String)
     ingredients = db.Column(db.String)
 
     # add relationship
+    restaurant_pizzas = db.relationship('RestaurantPizza', back_populates='pizza', cascade='all, delete-orphan')
 
     # add serialization rules
+    serialize_only = ('id', 'name', 'ingredients', 'restaurant_pizzas')
+    serialize_rules = ('-restaurant_pizzas.pizza',)
 
-    def __repr__(self):
+    def __repr__(self):  # Corrected __repr__
         return f"<Pizza {self.name}, {self.ingredients}>"
 
-
 class RestaurantPizza(db.Model, SerializerMixin):
-    __tablename__ = "restaurant_pizzas"
+    __tablename__ = "restaurant_pizzas"  # Corrected __tablename__
 
     id = db.Column(db.Integer, primary_key=True)
     price = db.Column(db.Integer, nullable=False)
+    restaurant_id = db.Column(db.Integer, db.ForeignKey('restaurants.id'), nullable=False)
+    pizza_id = db.Column(db.Integer, db.ForeignKey('pizzas.id'), nullable=False)
 
     # add relationships
+    pizza = db.relationship('Pizza', back_populates='restaurant_pizzas')
+    restaurant = db.relationship('Restaurant', back_populates='restaurant_pizzas')
 
     # add serialization rules
+    serialize_only = ('id', 'price', 'pizza', 'restaurant', 'pizza_id', 'restaurant_id')
+    serialize_rules = ('-restaurant.restaurant_pizzas', '-pizza.restaurant_pizzas')
 
     # add validation
+    @validates('price')
+    def validate_price(self, key, price):
+        if not (1 <= price <= 30):
+            raise ValueError("validation errors")
+        return price
 
-    def __repr__(self):
+    def __repr__(self):  # Corrected __repr__
         return f"<RestaurantPizza ${self.price}>"
